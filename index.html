@@ -5,13 +5,17 @@
 <title>RavenQuest World Time</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
 <style>
 body {
     margin: 0;
     font-family: 'Orbitron', Arial, sans-serif;
     background: radial-gradient(circle at top, #0b0f1a, #000);
     color: #e6e6e6;
-    transition: background 0.8s;
+    transition: background 0.6s;
 }
 body.morning { background: radial-gradient(circle at top, #1e3a8a, #020617); }
 body.afternoon { background: radial-gradient(circle at top, #7c2d12, #020617); }
@@ -40,7 +44,7 @@ h1 {
 }
 
 .clock span {
-    font-size: 2.5rem;
+    font-size: 2.6rem;
     color: #c77dff;
 }
 
@@ -51,7 +55,7 @@ h1 {
     margin-bottom: 20px;
 }
 
-.filters input, .filters select {
+.filters input {
     background: #020617;
     color: #e6e6e6;
     border: 1px solid #334155;
@@ -104,7 +108,6 @@ h1 {
     <div id="phase"></div>
 </div>
 
-<!-- FILTROS -->
 <div class="filters">
     <input type="number" id="filterLevel" placeholder="Level mínimo">
     <input type="text" id="filterMap" placeholder="Mapa">
@@ -150,7 +153,6 @@ const events = [
     level:60,
     recurrenceHours:6
 }
-// ➕ ADICIONE NOVOS EVENTOS AQUI
 ];
 
 /* ================= TEMPO ================= */
@@ -158,13 +160,16 @@ function getGameTime(){
     const now = new Date();
     const base = new Date(now);
     base.setHours(BASE_REAL_TIME.h,BASE_REAL_TIME.m,BASE_REAL_TIME.s,0);
-    let diff = (now-base)/1000;
-    if(diff<0) diff+=86400;
-    let total = Math.floor((diff*MULTIPLIER)%86400);
+
+    let diff = (now - base) / 1000;
+    if(diff < 0) diff += 86400;
+
+    const total = Math.floor((diff * MULTIPLIER) % 86400);
+
     return {
-        h:Math.floor(total/3600),
-        m:Math.floor((total%3600)/60),
-        s:total%60,
+        h: Math.floor(total / 3600),
+        m: Math.floor((total % 3600) / 60),
+        s: total % 60,
         total
     };
 }
@@ -174,77 +179,80 @@ function formatTime(t){
 }
 
 function phaseByHour(h){
-    if(h<6) return ["MADRUGADA","dawn"];
-    if(h<12) return ["MANHÃ","morning"];
-    if(h<18) return ["TARDE","afternoon"];
+    if(h < 6) return ["MADRUGADA","dawn"];
+    if(h < 12) return ["MANHÃ","morning"];
+    if(h < 18) return ["TARDE","afternoon"];
     return ["NOITE","night"];
 }
 
 function toSeconds(t){
-    const [h,m,s]=t.split(":").map(Number);
-    return h*3600+m*60+s;
+    const [h,m,s] = t.split(":").map(Number);
+    return h*3600 + m*60 + s;
 }
 
-/* ================= EVENTOS ================= */
-function nextEventTime(e,gameSec){
+function nextEventTime(e, gameSec){
     if(e.startTime) return toSeconds(e.startTime);
+
     if(e.recurrenceHours){
-        const interval = e.recurrenceHours*3600;
-        return Math.ceil(gameSec/interval)*interval % 86400;
+        const interval = e.recurrenceHours * 3600;
+        return Math.ceil(gameSec / interval) * interval % 86400;
     }
 }
 
+/* ================= RENDER ================= */
 function render(){
     const gt = getGameTime();
     document.getElementById("gameClock").textContent = formatTime(gt);
 
-    const [phase,css] = phaseByHour(gt.h);
+    const [phase, css] = phaseByHour(gt.h);
     document.body.className = css;
     document.getElementById("phase").textContent = phase;
 
-    const lvl = Number(document.getElementById("filterLevel").value||0);
+    const lvl = Number(document.getElementById("filterLevel").value || 0);
     const map = document.getElementById("filterMap").value.toLowerCase();
-    const timeFilter = document.getElementById("filterTime").value;
-    const timeSec = timeFilter ? toSeconds(timeFilter+":00") : null;
+    const timeInput = document.getElementById("filterTime").value;
+    const timeSec = timeInput ? toSeconds(timeInput + ":00") : null;
 
     const list = document.getElementById("eventList");
     list.innerHTML = "";
 
     events
-    .map(e=>{
-        const start = nextEventTime(e,gt.total);
-        let diff = start-gt.total;
-        if(diff<0) diff+=86400;
-        return {...e,start,diff};
+    .map(e => {
+        const start = nextEventTime(e, gt.total);
+        let diff = start - gt.total;
+        if(diff < 0) diff += 86400;
+        return { ...e, start, diff };
     })
-    .filter(e=>{
-        if(e.level<lvl) return false;
+    .filter(e => {
+        if(e.level < lvl) return false;
         if(map && !e.map.toLowerCase().includes(map)) return false;
-        if(timeSec!==null && e.start!==timeSec) return false;
+        if(timeSec !== null && e.start < timeSec) return false;
         return true;
     })
-    .sort((a,b)=>a.diff-b.diff)
-    .forEach(e=>{
-        const div=document.createElement("div");
-        div.className="event";
-        if(e.diff<=60) div.classList.add("active");
-        else if(e.diff<=600) div.classList.add("upcoming");
+    .sort((a,b) => a.diff - b.diff)
+    .forEach(e => {
+        const div = document.createElement("div");
+        div.className = "event";
 
-        div.innerHTML=`
+        if(e.diff <= 60) div.classList.add("active");
+        else if(e.diff <= 600) div.classList.add("upcoming");
+
+        div.innerHTML = `
             <div class="event-title">${e.name}</div>
             <div class="event-info">
                 Mapa: ${e.map} • Tipo: ${e.type} • Level: ${e.level}<br>
                 Próximo início: ${formatTime({
-                    h:Math.floor(e.start/3600),
-                    m:Math.floor((e.start%3600)/60),
-                    s:e.start%60
+                    h: Math.floor(e.start/3600),
+                    m: Math.floor((e.start%3600)/60),
+                    s: e.start%60
                 })}
-            </div>`;
+            </div>
+        `;
         list.appendChild(div);
     });
 }
 
-setInterval(render,1000);
+setInterval(render, 1000);
 render();
 </script>
 
