@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>RavenQuest World Time</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Orbitron', Arial, sans-serif;
+    background: radial-gradient(circle at top, #0b0f1a, #000);
+    color: #e6e6e6;
+    transition: background 0.8s;
+}
+body.morning { background: radial-gradient(circle at top, #1e3a8a, #020617); }
+body.afternoon { background: radial-gradient(circle at top, #7c2d12, #020617); }
+body.night { background: radial-gradient(circle at top, #020617, #000); }
+body.dawn { background: radial-gradient(circle at top, #312e81, #020617); }
+
+h1 {
+    text-align: center;
+    margin-top: 20px;
+    color: #9d4edd;
+    text-shadow: 0 0 15px #7b2cbf;
+}
+
+.container {
+    max-width: 1000px;
+    margin: auto;
+    padding: 20px;
+}
+
+.clock {
+    background: linear-gradient(145deg, #111827, #020617);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.clock span {
+    font-size: 2.5rem;
+    color: #c77dff;
+}
+
+.filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.filters input, .filters select {
+    background: #020617;
+    color: #e6e6e6;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.events {
+    background: linear-gradient(145deg, #0f172a, #020617);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.event {
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 12px;
+    background: rgba(15,23,42,0.85);
+}
+
+.event.active {
+    border-color: #22c55e;
+    box-shadow: 0 0 15px rgba(34,197,94,0.6);
+}
+
+.event.upcoming {
+    border-color: #eab308;
+}
+
+.event-title {
+    font-size: 1.1rem;
+}
+
+.event-info {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+</style>
+</head>
+
+<body>
+<h1>🕒 RavenQuest World Time</h1>
+
+<div class="container">
+
+<div class="clock">
+    <div>Horário In-Game</div>
+    <span id="gameClock">00:00:00</span>
+    <div id="phase"></div>
+</div>
+
+<!-- FILTROS -->
+<div class="filters">
+    <input type="number" id="filterLevel" placeholder="Level mínimo">
+    <input type="text" id="filterMap" placeholder="Mapa">
+    <input type="time" id="filterTime">
+</div>
+
+<div class="events" id="eventList"></div>
+
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const BASE_REAL_TIME = { h:19, m:0, s:42 };
+const MULTIPLIER = 12;
+
+/* ================= EVENTOS ================= */
+const events = [
+{
+    name:"Invasão Sombria",
+    map:"Cemitério de Nocturn",
+    type:"World Event",
+    level:30,
+    startTime:"02:00:00"
+},
+{
+    name:"Cerco Arcano",
+    map:"Fortaleza de Ravenfall",
+    type:"PvE",
+    level:45,
+    recurrenceHours:4
+},
+{
+    name:"Fenda do Caos",
+    map:"Deserto de Ashkar",
+    type:"Boss Mundial",
+    level:60,
+    recurrenceHours:6
+}
+// ➕ ADICIONE NOVOS EVENTOS AQUI
+];
+
+/* ================= TEMPO ================= */
+function getGameTime(){
+    const now = new Date();
+    const base = new Date(now);
+    base.setHours(BASE_REAL_TIME.h,BASE_REAL_TIME.m,BASE_REAL_TIME.s,0);
+    let diff = (now-base)/1000;
+    if(diff<0) diff+=86400;
+    let total = Math.floor((diff*MULTIPLIER)%86400);
+    return {
+        h:Math.floor(total/3600),
+        m:Math.floor((total%3600)/60),
+        s:total%60,
+        total
+    };
+}
+
+function formatTime(t){
+    return `${String(t.h).padStart(2,"0")}:${String(t.m).padStart(2,"0")}:${String(t.s).padStart(2,"0")}`;
+}
+
+function phaseByHour(h){
+    if(h<6) return ["MADRUGADA","dawn"];
+    if(h<12) return ["MANHÃ","morning"];
+    if(h<18) return ["TARDE","afternoon"];
+    return ["NOITE","night"];
+}
+
+function toSeconds(t){
+    const [h,m,s]=t.split(":").map(Number);
+    return h*3600+m*60+s;
+}
+
+/* ================= EVENTOS ================= */
+function nextEventTime(e,gameSec){
+    if(e.startTime) return toSeconds(e.startTime);
+    if(e.recurrenceHours){
+        const interval = e.recurrenceHours*3600;
+        return Math.ceil(gameSec/interval)*interval % 86400;
+    }
+}
+
+function render(){
+    const gt = getGameTime();
+    document.getElementById("gameClock").textContent = formatTime(gt);
+
+    const [phase,css] = phaseByHour(gt.h);
+    document.body.className = css;
+    document.getElementById("phase").textContent = phase;
+
+    const lvl = Number(document.getElementById("filterLevel").value||0);
+    const map = document.getElementById("filterMap").value.toLowerCase();
+    const timeFilter = document.getElementById("filterTime").value;
+    const timeSec = timeFilter ? toSeconds(timeFilter+":00") : null;
+
+    const list = document.getElementById("eventList");
+    list.innerHTML = "";
+
+    events
+    .map(e=>{
+        const start = nextEventTime(e,gt.total);
+        let diff = start-gt.total;
+        if(diff<0) diff+=86400;
+        return {...e,start,diff};
+    })
+    .filter(e=>{
+        if(e.level<lvl) return false;
+        if(map && !e.map.toLowerCase().includes(map)) return false;
+        if(timeSec!==null && e.start!==timeSec) return false;
+        return true;
+    })
+    .sort((a,b)=>a.diff-b.diff)
+    .forEach(e=>{
+        const div=document.createElement("div");
+        div.className="event";
+        if(e.diff<=60) div.classList.add("active");
+        else if(e.diff<=600) div.classList.add("upcoming");
+
+        div.innerHTML=`
+            <div class="event-title">${e.name}</div>
+            <div class="event-info">
+                Mapa: ${e.map} • Tipo: ${e.type} • Level: ${e.level}<br>
+                Próximo início: ${formatTime({
+                    h:Math.floor(e.start/3600),
+                    m:Math.floor((e.start%3600)/60),
+                    s:e.start%60
+                })}
+            </div>`;
+        list.appendChild(div);
+    });
+}
+
+setInterval(render,1000);
+render();
+</script>
+
+</body>
+</html>
