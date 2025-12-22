@@ -141,7 +141,7 @@ const events = [
 },
 {
     name:"Louvor ao Sol",
-    map:"Gilead Islando",
+    map:"Gilead Island",
     type:"World Event",
     level:45,
     startTime:"05:24:00"
@@ -154,12 +154,12 @@ const events = [
     startTime:"18:00:00"
 },
 {
-    name:"Sacrifício Norturno",
+    name:"Sacrifício Noturno",
     map:"Gilead Island",
     type:"World Event",
     level:45,
-    recurrenceHours:24
-},
+    startTime:"18:00:00" // 🔁 TODO DIA ÀS 06:00 PM
+}
 ];
 
 /* ================= TEMPO ================= */
@@ -197,15 +197,6 @@ function toSeconds(t){
     return h*3600 + m*60 + s;
 }
 
-function nextEventTime(e, gameSec){
-    if(e.startTime) return toSeconds(e.startTime);
-
-    if(e.recurrenceHours){
-        const interval = e.recurrenceHours * 3600;
-        return Math.ceil(gameSec / interval) * interval % 86400;
-    }
-}
-
 /* ================= RENDER ================= */
 function render(){
     const gt = getGameTime();
@@ -217,6 +208,7 @@ function render(){
 
     const lvl = Number(document.getElementById("filterLevel").value || 0);
     const map = document.getElementById("filterMap").value.toLowerCase();
+
     const timeInput = document.getElementById("filterTime").value;
     const timeSec = timeInput ? toSeconds(timeInput + ":00") : null;
 
@@ -225,7 +217,7 @@ function render(){
 
     events
     .map(e => {
-        const start = nextEventTime(e, gt.total);
+        const start = toSeconds(e.startTime);
         let diff = start - gt.total;
         if(diff < 0) diff += 86400;
         return { ...e, start, diff };
@@ -233,7 +225,7 @@ function render(){
     .filter(e => {
         if(e.level < lvl) return false;
         if(map && !e.map.toLowerCase().includes(map)) return false;
-        if(timeSec !== null && e.start < timeSec) return false;
+        if(timeSec !== null && e.start !== timeSec) return false;
         return true;
     })
     .sort((a,b) => a.diff - b.diff)
