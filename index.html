@@ -144,7 +144,7 @@ const events = [
     map:"Gilead Island",
     type:"Trigger Event",
     level:45,
-     startTime:"05:24:00" // 🔁 TODO DIA ÀS 05:24 AM
+    startTime:"05:24:00"
 },
 {
     name:"Fenda do Caos",
@@ -158,27 +158,27 @@ const events = [
     map:"Gilead Island",
     type:"Trigger Event",
     level:45,
-    startTime:"18:00:00" // 🔁 TODO DIA ÀS 06:00 PM
+    startTime:"18:00:00"
 },
 {
     name:"Passagens Ocultas",
     map:"Rohna Woods",
     type:"Trigger Event",
     level:45,
-    startTime:"20:00:00" // 🔁 TODO DIA ÀS 08:00 PM
+    startTime:"20:00:00"
 },
 {
     name:"Passagens Ocultas",
     map:"Rohna Woods",
     type:"Trigger Event",
     level:45,
-    startTime:"05:45:00" // 🔁 TODO DIA ÀS 05:45 AM
+    startTime:"05:45:00"
 },
 {
     name:"Abelhas Assassinas",
     map:"Rohna Woods",
     type:"Mob-Spawn Event",
-    level:45,
+    level:45
 }
 ];
 
@@ -237,9 +237,14 @@ function render(){
 
     events
     .map(e => {
+        if (!e.startTime) {
+            return { ...e, start: null, diff: Infinity };
+        }
+
         const start = toSeconds(e.startTime);
         let diff = start - gt.total;
         if(diff < 0) diff += 86400;
+
         return { ...e, start, diff };
     })
     .filter(e => {
@@ -260,11 +265,13 @@ function render(){
             <div class="event-title">${e.name}</div>
             <div class="event-info">
                 Mapa: ${e.map} • Tipo: ${e.type} • Level: ${e.level}<br>
-                Próximo início: ${formatTime({
-                    h: Math.floor(e.start/3600),
-                    m: Math.floor((e.start%3600)/60),
-                    s: e.start%60
-                })}
+                Próximo início: ${e.start !== null 
+                    ? formatTime({
+                        h: Math.floor(e.start/3600),
+                        m: Math.floor((e.start%3600)/60),
+                        s: e.start%60
+                      })
+                    : "Sem horário fixo"}
             </div>
         `;
         list.appendChild(div);
