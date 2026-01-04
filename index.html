@@ -248,9 +248,15 @@ function render(){
         return { ...e, start, diff };
     })
     .filter(e => {
-        if(e.level < lvl) return false;
-        if(map && !e.map.toLowerCase().includes(map)) return false;
-        if(timeSec !== null && e.start !== timeSec) return false;
+        if (e.level < lvl) return false;
+        if (map && !e.map.toLowerCase().includes(map)) return false;
+
+        if (timeSec !== null && e.start !== null) {
+            const eventHM = Math.floor(e.start / 60);
+            const filterHM = Math.floor(timeSec / 60);
+            if (eventHM !== filterHM) return false;
+        }
+
         return true;
     })
     .sort((a,b) => a.diff - b.diff)
@@ -265,11 +271,11 @@ function render(){
             <div class="event-title">${e.name}</div>
             <div class="event-info">
                 Mapa: ${e.map} • Tipo: ${e.type} • Level: ${e.level}<br>
-                Próximo início: ${e.start !== null 
+                Próximo início: ${e.start !== null
                     ? formatTime({
-                        h: Math.floor(e.start/3600),
-                        m: Math.floor((e.start%3600)/60),
-                        s: e.start%60
+                        h: Math.floor(e.start / 3600),
+                        m: Math.floor((e.start % 3600) / 60),
+                        s: e.start % 60
                       })
                     : "Sem horário fixo"}
             </div>
