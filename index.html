@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>RavenQuest World Time + Player</title>
+<title>RavenQuest World Time + Player Link</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -143,7 +143,7 @@ h1 {
 #videoTooltip {
     position: fixed;
     display: none;
-    width: 240px; /* Um pouco menor para não atrapalhar */
+    width: 240px;
     height: 135px;
     background: #000;
     border: 2px solid #9d4edd;
@@ -156,15 +156,15 @@ h1 {
 #videoTooltip img { width: 100%; height: 100%; object-fit: cover; }
 #videoTooltip .no-video { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 0.8rem; background: #111; }
 
-/* ================= MODAL DE VÍDEO (NOVO) ================= */
+/* ================= MODAL DE VÍDEO ================= */
 .modal-overlay {
-    display: none; /* Escondido por padrão */
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.85); /* Fundo escuro */
+    background: rgba(0, 0, 0, 0.85);
     z-index: 10000;
     justify-content: center;
     align-items: center;
@@ -237,8 +237,8 @@ h1 {
 const BASE_REAL_TIME = { h:19, m:0, s:42 };
 const MULTIPLIER = 12;
 
-/* ================= EVENTOS ================= */
-// ATENÇÃO: Substitua 'VIDEO_ID_AQUI' pelos IDs reais (ex: dQw4w9WgXcQ)
+/* ================= EVENTOS (COM LINK COMPLETO) ================= */
+// AGORA VOCÊ PODE COLOCAR O LINK INTEIRO DO YOUTUBE
 const events = [
 {
     name:"Ritual Embriagado",
@@ -246,7 +246,7 @@ const events = [
     type:"World-Time Event",
     level:8,
     startTime:"08:00:00",
-    videoId: "VIDEO_ID_AQUI" 
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" 
 },
 {
     name:"Ritual Embriagado",
@@ -254,7 +254,7 @@ const events = [
     type:"World-Time Event",
     level:8,
     startTime:"20:00:00",
-    videoId: "VIDEO_ID_AQUI"
+    videoUrl: "https://youtu.be/dQw4w9WgXcQ" // Exemplo de link curto
 },
 {
     name:"Louvor ao Sol",
@@ -262,7 +262,7 @@ const events = [
     type:"Trigger Event",
     level:45,
     startTime:"05:24:00",
-    videoId: "" 
+    videoUrl: "" 
 },
 {
     name:"Fenda do Caos",
@@ -270,7 +270,7 @@ const events = [
     type:"World Event",
     level:45,
     startTime:"18:00:00",
-    videoId: ""
+    videoUrl: ""
 },
 {
     name:"Sacrifício Noturno",
@@ -278,7 +278,7 @@ const events = [
     type:"Trigger Event",
     level:45,
     startTime:"18:00:00",
-    videoId: ""
+    videoUrl: ""
 },
 {
     name:"Passagens Ocultas",
@@ -286,7 +286,7 @@ const events = [
     type:"Trigger Event",
     level:16,
     startTime:"20:00:00",
-    videoId: ""
+    videoUrl: ""
 },
 {
     name:"Passagens Ocultas",
@@ -294,7 +294,7 @@ const events = [
     type:"Trigger Event",
     level:16,
     startTime:"05:45:00",
-    videoId: ""
+    videoUrl: ""
 },
 {
     name:"Uma Escolta à Defiance",
@@ -302,25 +302,25 @@ const events = [
     type:"Trigger Event",
     level:33,
     startTime:"00:00:00",
-    videoId: "vwNoPAWTIDo&list=PL27eL0vwH2jKpLJytTB4gwJ8soNKt1o4u&index=36"
+    videoUrl: "https://www.youtube.com/watch?v=vwNoPAWTIDo&list=PL27eL0vwH2jKpLJytTB4gwJ8soNKt1o4u&index=37"
 },
 {
     name:"Abelhas Assassinas",
     map:"Rohna Woods",
     type:"Mob-Spawn Event",
     level:15,
-    videoId: ""
+    videoUrl: ""
 },
 {
     name:"Olhe Mas Não Toque",
     map:"Sajecho Island",
     type:"Trigger Event",
     level:21,
-    videoId: ""
+    videoUrl: ""
 },    
 ];
 
-/* ================= TEMPO ================= */
+/* ================= FUNÇÕES DE TEMPO ================= */
 function getGameTime(){
     const now = new Date();
     const base = new Date(now);
@@ -355,6 +355,16 @@ function toSeconds(t){
     return h*3600 + m*60 + s;
 }
 
+/* ================= EXTRAIR ID DO YOUTUBE ================= */
+// Essa função pega o link inteiro e retorna só o ID
+function getYoutubeId(url) {
+    if (!url) return null;
+    // Expressão regular para achar o ID em vários formatos de link
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+}
+
 /* ================= TOOLTIP LOGIC ================= */
 const tooltip = document.getElementById("videoTooltip");
 
@@ -381,27 +391,23 @@ function hideTooltip() {
     tooltip.style.display = "none";
 }
 
-/* ================= MODAL LOGIC (PLAY VIDEO) ================= */
+/* ================= MODAL LOGIC ================= */
 const modal = document.getElementById("videoModal");
 const player = document.getElementById("youtubePlayer");
 
 function openModal(videoId) {
-    if(!videoId) return; // Segurança
-    // Monta a URL com Autoplay
+    if(!videoId) return;
     const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     player.src = embedUrl;
     modal.style.display = "flex";
-    
-    // Esconde tooltip ao clicar para não ficar por cima
     hideTooltip();
 }
 
 function closeModal() {
     modal.style.display = "none";
-    player.src = ""; // Para o vídeo/áudio
+    player.src = "";
 }
 
-// Fechar com ESC
 document.addEventListener('keydown', function(event) {
     if(event.key === "Escape"){
         closeModal();
@@ -423,20 +429,20 @@ function render(){
     const timeSec = timeInput ? toSeconds(timeInput + ":00") : null;
 
     const list = document.getElementById("eventList");
-    
-    // Nota: Como o render roda a cada segundo, precisamos ter cuidado com os eventos de clique.
-    // Recriar os elementos a cada segundo mantém o relógio atualizado.
     list.innerHTML = "";
 
     events
     .map(e => {
+        // AQUI: Extraímos o ID do link antes de usar
+        const videoId = getYoutubeId(e.videoUrl);
+
         if (!e.startTime) {
-            return { ...e, start: null, diff: Infinity };
+            return { ...e, start: null, diff: Infinity, videoId };
         }
         const start = toSeconds(e.startTime);
         let diff = start - gt.total;
         if(diff < 0) diff += 86400;
-        return { ...e, start, diff };
+        return { ...e, start, diff, videoId };
     })
     .filter(e => {
         if (e.level < lvl) return false;
@@ -456,7 +462,7 @@ function render(){
         if(e.diff <= 60) div.classList.add("active");
         else if(e.diff <= 600) div.classList.add("upcoming");
 
-        // Tooltip ao passar o mouse NO CARD inteiro
+        // Passamos o videoId extraído para as funções
         div.onmouseenter = (evt) => showTooltip(evt, e.videoId);
         div.onmousemove = (evt) => moveTooltip(evt);
         div.onmouseleave = () => hideTooltip();
@@ -464,9 +470,8 @@ function render(){
         const videoIndicator = e.videoId ? '<span class="video-icon">▶ Assistir</span>' : '';
         const titleClass = e.videoId ? 'event-title has-video' : 'event-title';
 
-        // Cria o HTML interno
         div.innerHTML = `
-            <div class="${titleClass}" id="title-${e.name.replace(/\s+/g, '')}">
+            <div class="${titleClass}">
                 ${e.name}
                 ${videoIndicator}
             </div>
@@ -484,11 +489,10 @@ function render(){
 
         list.appendChild(div);
 
-        // Adiciona o evento de clique APENAS no título e SE tiver vídeo
         if (e.videoId) {
             const titleElement = div.querySelector('.event-title');
             titleElement.onclick = (evt) => {
-                evt.stopPropagation(); // Evita bugs de propagação
+                evt.stopPropagation();
                 openModal(e.videoId);
             };
         }
