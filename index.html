@@ -2,20 +2,18 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>RavenQuest World Time</title>
+<title>RavenQuest World Time + Videos</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
 <style>
+/* ================= ESTILOS GERAIS ================= */
 body {
     margin: 0;
     font-family: 'Orbitron', Arial, sans-serif;
     background: radial-gradient(circle at top, #0b0f1a, #000);
     color: #e6e6e6;
     transition: background 0.6s;
+    overflow-x: hidden; /* Evita rolagem lateral indesejada */
 }
 body.morning { background: radial-gradient(circle at top, #1e3a8a, #020617); }
 body.afternoon { background: radial-gradient(circle at top, #7c2d12, #020617); }
@@ -35,19 +33,24 @@ h1 {
     padding: 20px;
 }
 
+/* ================= RELÓGIO ================= */
 .clock {
     background: linear-gradient(145deg, #111827, #020617);
     border-radius: 12px;
     padding: 20px;
     text-align: center;
     margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 
 .clock span {
     font-size: 2.6rem;
     color: #c77dff;
+    display: block;
+    margin: 10px 0;
 }
 
+/* ================= FILTROS ================= */
 .filters {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
@@ -60,21 +63,35 @@ h1 {
     color: #e6e6e6;
     border: 1px solid #334155;
     border-radius: 8px;
-    padding: 8px;
+    padding: 10px;
+    outline: none;
+}
+.filters input:focus {
+    border-color: #9d4edd;
 }
 
+/* ================= LISTA DE EVENTOS ================= */
 .events {
     background: linear-gradient(145deg, #0f172a, #020617);
     border-radius: 12px;
     padding: 20px;
+    min-height: 200px;
 }
 
 .event {
+    position: relative; /* Necessário para contexto */
     border: 1px solid #334155;
     border-radius: 10px;
     padding: 15px;
     margin-bottom: 12px;
     background: rgba(15,23,42,0.85);
+    transition: transform 0.2s, border-color 0.2s;
+    cursor: pointer;
+}
+
+.event:hover {
+    transform: translateX(5px);
+    border-color: #c77dff;
 }
 
 .event.active {
@@ -88,11 +105,59 @@ h1 {
 
 .event-title {
     font-size: 1.1rem;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Ícone indicando que tem vídeo */
+.video-icon {
+    font-size: 0.8rem;
+    background: #ef4444;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    opacity: 0.8;
 }
 
 .event-info {
     font-size: 0.85rem;
     color: #94a3b8;
+    margin-top: 5px;
+    line-height: 1.4;
+}
+
+/* ================= TOOLTIP DO VÍDEO (NOVO) ================= */
+#videoTooltip {
+    position: fixed;
+    display: none;
+    width: 300px;
+    height: 169px; /* Aspect Ratio 16:9 aprox */
+    background: #000;
+    border: 2px solid #9d4edd;
+    border-radius: 8px;
+    z-index: 9999;
+    pointer-events: none; /* O mouse ignora a tooltip para não piscar */
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+#videoTooltip img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#videoTooltip .no-video {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 0.8rem;
+    background: #111;
 }
 </style>
 </head>
@@ -105,7 +170,7 @@ h1 {
 <div class="clock">
     <div>Horário In-Game</div>
     <span id="gameClock">00:00:00</span>
-    <div id="phase"></div>
+    <div id="phase">--</div>
 </div>
 
 <div class="filters">
@@ -118,80 +183,94 @@ h1 {
 
 </div>
 
+<div id="videoTooltip"></div>
+
 <script>
 /* ================= CONFIG ================= */
 const BASE_REAL_TIME = { h:19, m:0, s:42 };
 const MULTIPLIER = 12;
 
-/* ================= EVENTOS ================= */
+/* ================= EVENTOS (COM VIDEO IDs) ================= */
+// Nota: Adicionei a propriedade 'videoId'. Coloque o ID do video do Youtube.
+// Exemplo: Para https://www.youtube.com/watch?v=dQw4w9WgXcQ, o ID é dQw4w9WgXcQ
 const events = [
 {
     name:"Ritual Embriagado",
     map:"Glademire",
     type:"World-Time Event",
     level:8,
-    startTime:"08:00:00"
+    startTime:"08:00:00",
+    videoId: "VIDEO_ID_AQUI" 
 },
 {
     name:"Ritual Embriagado",
     map:"Glademire",
     type:"World-Time Event",
     level:8,
-    startTime:"20:00:00"
+    startTime:"20:00:00",
+    videoId: "VIDEO_ID_AQUI"
 },
 {
     name:"Louvor ao Sol",
     map:"Gilead Island",
     type:"Trigger Event",
     level:45,
-    startTime:"05:24:00"
+    startTime:"05:24:00",
+    videoId: "" // Sem vídeo ainda
 },
 {
     name:"Fenda do Caos",
     map:"Deserto de Ashkar",
     type:"World Event",
     level:45,
-    startTime:"18:00:00"
+    startTime:"18:00:00",
+    videoId: ""
 },
 {
     name:"Sacrifício Noturno",
     map:"Gilead Island",
     type:"Trigger Event",
     level:45,
-    startTime:"18:00:00"
+    startTime:"18:00:00",
+    videoId: ""
 },
 {
     name:"Passagens Ocultas",
     map:"Rohna Woods",
     type:"Trigger Event",
     level:16,
-    startTime:"20:00:00"
+    startTime:"20:00:00",
+    videoId: ""
 },
 {
     name:"Passagens Ocultas",
     map:"Rohna Woods",
     type:"Trigger Event",
     level:16,
-    startTime:"05:45:00"
+    startTime:"05:45:00",
+    videoId: ""
 },
 {
     name:"Uma Escolta à Defiance",
     map:"Zephyr Vale",
     type:"Trigger Event",
     level:33,
-    startTime:"00:00:00"
+    startTime:"00:00:00",
+    videoId: ""
 },
 {
     name:"Abelhas Assassinas",
     map:"Rohna Woods",
     type:"Mob-Spawn Event",
-    level:15
+    level:15,
+    videoId: ""
 },
 {
     name:"Olhe Mas Não Toque",
     map:"Sajecho Island",
     type:"Trigger Event",
-    level:21
+    level:21,
+    videoId: ""
 },    
 ];
 
@@ -230,6 +309,37 @@ function toSeconds(t){
     return h*3600 + m*60 + s;
 }
 
+/* ================= TOOLTIP LOGIC ================= */
+const tooltip = document.getElementById("videoTooltip");
+
+function showTooltip(e, videoId) {
+    if (!videoId) {
+        tooltip.innerHTML = '<div class="no-video">Sem vídeo disponível</div>';
+    } else {
+        // Usa a imagem HQ do YouTube
+        const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        tooltip.innerHTML = `<img src="${thumbUrl}" alt="Preview">`;
+    }
+    tooltip.style.display = "block";
+    moveTooltip(e);
+}
+
+function moveTooltip(e) {
+    // Posiciona a tooltip um pouco à direita e abaixo do mouse
+    let x = e.clientX + 15;
+    let y = e.clientY + 15;
+    
+    // Evita que saia da tela (básico)
+    if (x + 300 > window.innerWidth) x = e.clientX - 315;
+    
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
+}
+
+function hideTooltip() {
+    tooltip.style.display = "none";
+}
+
 /* ================= RENDER ================= */
 function render(){
     const gt = getGameTime();
@@ -241,11 +351,12 @@ function render(){
 
     const lvl = Number(document.getElementById("filterLevel").value || 0);
     const map = document.getElementById("filterMap").value.toLowerCase();
-
     const timeInput = document.getElementById("filterTime").value;
     const timeSec = timeInput ? toSeconds(timeInput + ":00") : null;
 
     const list = document.getElementById("eventList");
+    
+    // Limpar lista e reconstruir (Nota: isso roda a cada segundo)
     list.innerHTML = "";
 
     events
@@ -253,23 +364,19 @@ function render(){
         if (!e.startTime) {
             return { ...e, start: null, diff: Infinity };
         }
-
         const start = toSeconds(e.startTime);
         let diff = start - gt.total;
         if(diff < 0) diff += 86400;
-
         return { ...e, start, diff };
     })
     .filter(e => {
         if (e.level < lvl) return false;
         if (map && !e.map.toLowerCase().includes(map)) return false;
-
         if (timeSec !== null && e.start !== null) {
             const eventHM = Math.floor(e.start / 60);
             const filterHM = Math.floor(timeSec / 60);
             if (eventHM !== filterHM) return false;
         }
-
         return true;
     })
     .sort((a,b) => a.diff - b.diff)
@@ -280,8 +387,18 @@ function render(){
         if(e.diff <= 60) div.classList.add("active");
         else if(e.diff <= 600) div.classList.add("upcoming");
 
+        // Adiciona listeners para o Tooltip
+        div.onmouseenter = (evt) => showTooltip(evt, e.videoId);
+        div.onmousemove = (evt) => moveTooltip(evt);
+        div.onmouseleave = () => hideTooltip();
+
+        const videoIndicator = e.videoId ? '<span class="video-icon">▶ Video</span>' : '';
+
         div.innerHTML = `
-            <div class="event-title">${e.name}</div>
+            <div class="event-title">
+                ${e.name}
+                ${videoIndicator}
+            </div>
             <div class="event-info">
                 Mapa: ${e.map} • Tipo: ${e.type} • Level: ${e.level}<br>
                 Próximo início: ${e.start !== null
@@ -297,6 +414,7 @@ function render(){
     });
 }
 
+// Inicia o loop
 setInterval(render, 1000);
 render();
 </script>
