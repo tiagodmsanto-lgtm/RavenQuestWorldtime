@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>RavenQuest World Time + Videos</title>
+<title>RavenQuest World Time + Player</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -13,7 +13,7 @@ body {
     background: radial-gradient(circle at top, #0b0f1a, #000);
     color: #e6e6e6;
     transition: background 0.6s;
-    overflow-x: hidden; /* Evita rolagem lateral indesejada */
+    overflow-x: hidden;
 }
 body.morning { background: radial-gradient(circle at top, #1e3a8a, #020617); }
 body.afternoon { background: radial-gradient(circle at top, #7c2d12, #020617); }
@@ -79,14 +79,13 @@ h1 {
 }
 
 .event {
-    position: relative; /* Necessário para contexto */
+    position: relative;
     border: 1px solid #334155;
     border-radius: 10px;
     padding: 15px;
     margin-bottom: 12px;
     background: rgba(15,23,42,0.85);
     transition: transform 0.2s, border-color 0.2s;
-    cursor: pointer;
 }
 
 .event:hover {
@@ -103,15 +102,27 @@ h1 {
     border-color: #eab308;
 }
 
+/* Estilo do Título clicável */
 .event-title {
     font-size: 1.1rem;
     font-weight: bold;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    transition: color 0.2s;
 }
 
-/* Ícone indicando que tem vídeo */
+.event-title.has-video {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: rgba(255,255,255,0.3);
+}
+
+.event-title.has-video:hover {
+    color: #c77dff;
+    text-decoration-color: #c77dff;
+}
+
 .video-icon {
     font-size: 0.8rem;
     background: #ef4444;
@@ -128,37 +139,68 @@ h1 {
     line-height: 1.4;
 }
 
-/* ================= TOOLTIP DO VÍDEO (NOVO) ================= */
+/* ================= TOOLTIP DO VÍDEO ================= */
 #videoTooltip {
     position: fixed;
     display: none;
-    width: 300px;
-    height: 169px; /* Aspect Ratio 16:9 aprox */
+    width: 240px; /* Um pouco menor para não atrapalhar */
+    height: 135px;
     background: #000;
     border: 2px solid #9d4edd;
     border-radius: 8px;
-    z-index: 9999;
-    pointer-events: none; /* O mouse ignora a tooltip para não piscar */
+    z-index: 9000;
+    pointer-events: none;
     overflow: hidden;
     box-shadow: 0 0 20px rgba(0,0,0,0.8);
 }
+#videoTooltip img { width: 100%; height: 100%; object-fit: cover; }
+#videoTooltip .no-video { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 0.8rem; background: #111; }
 
-#videoTooltip img {
+/* ================= MODAL DE VÍDEO (NOVO) ================= */
+.modal-overlay {
+    display: none; /* Escondido por padrão */
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
-}
-
-#videoTooltip .no-video {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
+    background: rgba(0, 0, 0, 0.85); /* Fundo escuro */
+    z-index: 10000;
     justify-content: center;
-    color: #666;
-    font-size: 0.8rem;
-    background: #111;
+    align-items: center;
+    backdrop-filter: blur(5px);
 }
+
+.modal-content {
+    position: relative;
+    width: 90%;
+    max-width: 800px;
+    aspect-ratio: 16/9;
+    background: #000;
+    border: 2px solid #9d4edd;
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(157, 78, 221, 0.4);
+}
+
+.modal-content iframe {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    border: none;
+}
+
+.close-btn {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    color: #fff;
+    font-size: 30px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+.close-btn:hover { color: #ef4444; }
+
 </style>
 </head>
 
@@ -166,33 +208,37 @@ h1 {
 <h1>🕒 RavenQuest World Time</h1>
 
 <div class="container">
+    <div class="clock">
+        <div>Horário In-Game</div>
+        <span id="gameClock">00:00:00</span>
+        <div id="phase">--</div>
+    </div>
 
-<div class="clock">
-    <div>Horário In-Game</div>
-    <span id="gameClock">00:00:00</span>
-    <div id="phase">--</div>
-</div>
+    <div class="filters">
+        <input type="number" id="filterLevel" placeholder="Level mínimo">
+        <input type="text" id="filterMap" placeholder="Mapa">
+        <input type="time" id="filterTime">
+    </div>
 
-<div class="filters">
-    <input type="number" id="filterLevel" placeholder="Level mínimo">
-    <input type="text" id="filterMap" placeholder="Mapa">
-    <input type="time" id="filterTime">
-</div>
-
-<div class="events" id="eventList"></div>
-
+    <div class="events" id="eventList"></div>
 </div>
 
 <div id="videoTooltip"></div>
+
+<div id="videoModal" class="modal-overlay" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeModal()">✕ Fechar</span>
+        <iframe id="youtubePlayer" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    </div>
+</div>
 
 <script>
 /* ================= CONFIG ================= */
 const BASE_REAL_TIME = { h:19, m:0, s:42 };
 const MULTIPLIER = 12;
 
-/* ================= EVENTOS (COM VIDEO IDs) ================= */
-// Nota: Adicionei a propriedade 'videoId'. Coloque o ID do video do Youtube.
-// Exemplo: Para https://www.youtube.com/watch?v=dQw4w9WgXcQ, o ID é dQw4w9WgXcQ
+/* ================= EVENTOS ================= */
+// ATENÇÃO: Substitua 'VIDEO_ID_AQUI' pelos IDs reais (ex: dQw4w9WgXcQ)
 const events = [
 {
     name:"Ritual Embriagado",
@@ -216,7 +262,7 @@ const events = [
     type:"Trigger Event",
     level:45,
     startTime:"05:24:00",
-    videoId: "" // Sem vídeo ainda
+    videoId: "" 
 },
 {
     name:"Fenda do Caos",
@@ -256,7 +302,7 @@ const events = [
     type:"Trigger Event",
     level:33,
     startTime:"00:00:00",
-    videoId: "vwNoPAWTIDo&list=PL27eL0vwH2jKpLJytTB4gwJ8soNKt1o4u&index=36"
+    videoId: ""
 },
 {
     name:"Abelhas Assassinas",
@@ -316,7 +362,6 @@ function showTooltip(e, videoId) {
     if (!videoId) {
         tooltip.innerHTML = '<div class="no-video">Sem vídeo disponível</div>';
     } else {
-        // Usa a imagem HQ do YouTube
         const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
         tooltip.innerHTML = `<img src="${thumbUrl}" alt="Preview">`;
     }
@@ -325,13 +370,9 @@ function showTooltip(e, videoId) {
 }
 
 function moveTooltip(e) {
-    // Posiciona a tooltip um pouco à direita e abaixo do mouse
     let x = e.clientX + 15;
     let y = e.clientY + 15;
-    
-    // Evita que saia da tela (básico)
-    if (x + 300 > window.innerWidth) x = e.clientX - 315;
-    
+    if (x + 240 > window.innerWidth) x = e.clientX - 255;
     tooltip.style.left = x + "px";
     tooltip.style.top = y + "px";
 }
@@ -339,6 +380,33 @@ function moveTooltip(e) {
 function hideTooltip() {
     tooltip.style.display = "none";
 }
+
+/* ================= MODAL LOGIC (PLAY VIDEO) ================= */
+const modal = document.getElementById("videoModal");
+const player = document.getElementById("youtubePlayer");
+
+function openModal(videoId) {
+    if(!videoId) return; // Segurança
+    // Monta a URL com Autoplay
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    player.src = embedUrl;
+    modal.style.display = "flex";
+    
+    // Esconde tooltip ao clicar para não ficar por cima
+    hideTooltip();
+}
+
+function closeModal() {
+    modal.style.display = "none";
+    player.src = ""; // Para o vídeo/áudio
+}
+
+// Fechar com ESC
+document.addEventListener('keydown', function(event) {
+    if(event.key === "Escape"){
+        closeModal();
+    }
+});
 
 /* ================= RENDER ================= */
 function render(){
@@ -356,7 +424,8 @@ function render(){
 
     const list = document.getElementById("eventList");
     
-    // Limpar lista e reconstruir (Nota: isso roda a cada segundo)
+    // Nota: Como o render roda a cada segundo, precisamos ter cuidado com os eventos de clique.
+    // Recriar os elementos a cada segundo mantém o relógio atualizado.
     list.innerHTML = "";
 
     events
@@ -387,15 +456,17 @@ function render(){
         if(e.diff <= 60) div.classList.add("active");
         else if(e.diff <= 600) div.classList.add("upcoming");
 
-        // Adiciona listeners para o Tooltip
+        // Tooltip ao passar o mouse NO CARD inteiro
         div.onmouseenter = (evt) => showTooltip(evt, e.videoId);
         div.onmousemove = (evt) => moveTooltip(evt);
         div.onmouseleave = () => hideTooltip();
 
-        const videoIndicator = e.videoId ? '<span class="video-icon">▶ Video</span>' : '';
+        const videoIndicator = e.videoId ? '<span class="video-icon">▶ Assistir</span>' : '';
+        const titleClass = e.videoId ? 'event-title has-video' : 'event-title';
 
+        // Cria o HTML interno
         div.innerHTML = `
-            <div class="event-title">
+            <div class="${titleClass}" id="title-${e.name.replace(/\s+/g, '')}">
                 ${e.name}
                 ${videoIndicator}
             </div>
@@ -410,11 +481,20 @@ function render(){
                     : "Sem horário fixo"}
             </div>
         `;
+
         list.appendChild(div);
+
+        // Adiciona o evento de clique APENAS no título e SE tiver vídeo
+        if (e.videoId) {
+            const titleElement = div.querySelector('.event-title');
+            titleElement.onclick = (evt) => {
+                evt.stopPropagation(); // Evita bugs de propagação
+                openModal(e.videoId);
+            };
+        }
     });
 }
 
-// Inicia o loop
 setInterval(render, 1000);
 render();
 </script>
